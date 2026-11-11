@@ -50,8 +50,11 @@ class ToolkitApp(tk.Tk):
         ttk.Entry(tab, textvariable=self.hash_output, state="readonly").grid(
             row=6, column=0, sticky="ew"
         )
-        ttk.Button(tab, text="Copy", command=self.on_copy_hash).grid(
-            row=7, column=0, sticky="w", pady=(8, 0)
+        actions = ttk.Frame(tab)
+        actions.grid(row=7, column=0, sticky="w", pady=(8, 0))
+        ttk.Button(actions, text="Copy", command=self.on_copy_hash).pack(side="left")
+        ttk.Button(actions, text="Clear", command=self.on_clear_hash).pack(
+            side="left", padx=(8, 0)
         )
         return tab
 
@@ -119,6 +122,9 @@ class ToolkitApp(tk.Tk):
 
         self.verify_result = ttk.Label(tab, text="", font=("TkDefaultFont", 11, "bold"))
         self.verify_result.grid(row=3, column=0, sticky="w", pady=(12, 0))
+        ttk.Button(tab, text="Clear", command=self.on_clear_verify).grid(
+            row=4, column=0, sticky="w", pady=(8, 0)
+        )
         return tab
 
     def _file_row(self, parent, row, label, variable):
@@ -208,8 +214,11 @@ class ToolkitApp(tk.Tk):
         self.encrypt_output = tk.Text(tab, height=6, wrap="char", state="disabled")
         self.encrypt_output.grid(row=6, column=0, sticky="nsew")
 
-        ttk.Button(tab, text="Copy", command=self.on_copy_encrypt).grid(
-            row=7, column=0, sticky="w", pady=(8, 0)
+        actions = ttk.Frame(tab)
+        actions.grid(row=7, column=0, sticky="w", pady=(8, 0))
+        ttk.Button(actions, text="Copy", command=self.on_copy_encrypt).pack(side="left")
+        ttk.Button(actions, text="Clear", command=self.on_clear_encrypt).pack(
+            side="left", padx=(8, 0)
         )
         ttk.Label(
             tab,
@@ -253,6 +262,21 @@ class ToolkitApp(tk.Tk):
             return
         self.clipboard_clear()
         self.clipboard_append(value)
+
+    # ---------- Clear buttons ----------
+    def on_clear_hash(self):
+        self.hash_input.delete("1.0", "end")
+        self.hash_output.set("")
+
+    def on_clear_verify(self):
+        for variable in (self.file1, self.file2, self.check_file, self.expected_hash):
+            variable.set("")
+        self.verify_result.config(text="")
+
+    def on_clear_encrypt(self):
+        self.encrypt_input.delete("1.0", "end")
+        self.encrypt_password.set("")
+        self._set_encrypt_output("")
 
 
 if __name__ == "__main__":
