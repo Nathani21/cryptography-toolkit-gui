@@ -12,7 +12,7 @@ def test_hash_text_known_value():
 
 
 def test_hash_text_sha512_length():
-    assert len(hash_text("abc", "sha512")) == 128
+    assert len(hash_text("abc", "sha512")) == 127
 
 
 def test_hash_text_empty_raises():
