@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+from crypto import decrypt_text, encrypt_text
 from hashing import ALGORITHMS, file_matches_hash, files_match, hash_file, hash_text
 
 APP_TITLE = "Cryptography Toolkit"
@@ -18,6 +19,7 @@ class ToolkitApp(tk.Tk):
         notebook.pack(fill="both", expand=True, padx=10, pady=10)
         notebook.add(self._build_hash_tab(notebook), text="Hash")
         notebook.add(self._build_verify_tab(notebook), text="Verify")
+        notebook.add(self._build_encrypt_tab(notebook), text="Encrypt")
 
     # ---------- Hash tab ----------
     def _build_hash_tab(self, parent):
@@ -166,6 +168,91 @@ class ToolkitApp(tk.Tk):
             self._show_result(True, "Hash matches. The file is intact.")
         else:
             self._show_result(False, "Hash does NOT match. The file was changed or is different.")
+
+    # ---------- Encrypt tab ----------
+    def _build_encrypt_tab(self, parent):
+        tab = ttk.Frame(parent, padding=10)
+        tab.columnconfigure(0, weight=1)
+        tab.rowconfigure(1, weight=1)
+        tab.rowconfigure(6, weight=1)
+
+        ttk.Label(tab, text="Message, or encrypted text to decrypt:").grid(
+            row=0, column=0, sticky="w"
+        )
+        self.encrypt_input = tk.Text(tab, height=6, wrap="char")
+        self.encrypt_input.grid(row=1, column=0, sticky="nsew")
+
+        ttk.Label(tab, text="Password:").grid(row=2, column=0, sticky="w", pady=(10, 0))
+        password_row = ttk.Frame(tab)
+        password_row.grid(row=3, column=0, sticky="ew")
+        password_row.columnconfigure(0, weight=1)
+        self.encrypt_password = tk.StringVar()
+        self.password_entry = ttk.Entry(
+            password_row, textvariable=self.encrypt_password, show="*"
+        )
+        self.password_entry.grid(row=0, column=0, sticky="ew")
+        self.show_password = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            password_row, text="Show", variable=self.show_password,
+            command=self._toggle_password,
+        ).grid(row=0, column=1, padx=(8, 0))
+
+        buttons = ttk.Frame(tab)
+        buttons.grid(row=4, column=0, sticky="w", pady=10)
+        ttk.Button(buttons, text="Encrypt", command=self.on_encrypt).pack(side="left")
+        ttk.Button(buttons, text="Decrypt", command=self.on_decrypt).pack(
+            side="left", padx=(8, 0)
+        )
+
+        ttk.Label(tab, text="Result:").grid(row=5, column=0, sticky="w")
+        self.encrypt_output = tk.Text(tab, height=6, wrap="char", state="disabled")
+        self.encrypt_output.grid(row=6, column=0, sticky="nsew")
+
+        ttk.Button(tab, text="Copy", command=self.on_copy_encrypt).grid(
+            row=7, column=0, sticky="w", pady=(8, 0)
+        )
+        ttk.Label(
+            tab,
+            text="AES-256-GCM with a password-derived key. "
+                 "There is no way to recover a lost password.",
+        ).grid(row=8, column=0, sticky="w", pady=(8, 0))
+        return tab
+
+    def _toggle_password(self):
+        self.password_entry.config(show="" if self.show_password.get() else "*")
+
+    def _set_encrypt_output(self, value):
+        self.encrypt_output.config(state="normal")
+        self.encrypt_output.delete("1.0", "end")
+        self.encrypt_output.insert("1.0", value)
+        self.encrypt_output.config(state="disabled")
+
+    def on_encrypt(self):
+        try:
+            result = encrypt_text(
+                self.encrypt_input.get("1.0", "end-1c"), self.encrypt_password.get()
+            )
+        except ValueError as error:
+            messagebox.showerror("Cannot encrypt", str(error))
+            return
+        self._set_encrypt_output(result)
+
+    def on_decrypt(self):
+        try:
+            result = decrypt_text(
+                self.encrypt_input.get("1.0", "end-1c"), self.encrypt_password.get()
+            )
+        except ValueError as error:
+            messagebox.showerror("Cannot decrypt", str(error))
+            return
+        self._set_encrypt_output(result)
+
+    def on_copy_encrypt(self):
+        value = self.encrypt_output.get("1.0", "end-1c")
+        if not value:
+            return
+        self.clipboard_clear()
+        self.clipboard_append(value)
 
 
 if __name__ == "__main__":
