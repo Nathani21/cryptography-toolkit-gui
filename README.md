@@ -6,6 +6,8 @@ A small Python desktop app (Tkinter) for hashing text and files, checking file i
 
 > **Note:** This is a learning project and has not been audited. It uses standard algorithms from the `cryptography` library (AES-256-GCM and scrypt), but don't rely on it to protect anything important. The SHA hashes are for checking file integrity; they are not a way to store passwords.
 
+![Cryptography Toolkit screenshot](screenshot.png)
+
 ## Features
 
 **Hash**
