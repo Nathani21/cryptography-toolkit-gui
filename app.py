@@ -3,6 +3,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from crypto import decrypt_text, encrypt_text
 from hashing import ALGORITHMS, file_matches_hash, files_match, hash_file, hash_text
+from passwords import MAX_LENGTH, MIN_LENGTH, check_strength, generate_password
 
 APP_TITLE = "Cryptography Toolkit"
 
@@ -20,6 +21,7 @@ class ToolkitApp(tk.Tk):
         notebook.add(self._build_hash_tab(notebook), text="Hash")
         notebook.add(self._build_verify_tab(notebook), text="Verify")
         notebook.add(self._build_encrypt_tab(notebook), text="Encrypt")
+        notebook.add(self._build_passwords_tab(notebook), text="Passwords")
 
     # ---------- Hash tab ----------
     def _build_hash_tab(self, parent):
@@ -277,6 +279,102 @@ class ToolkitApp(tk.Tk):
         self.encrypt_input.delete("1.0", "end")
         self.encrypt_password.set("")
         self._set_encrypt_output("")
+
+    # ---------- Passwords tab ----------
+    def _build_passwords_tab(self, parent):
+        tab = ttk.Frame(parent, padding=10)
+        tab.columnconfigure(0, weight=1)
+
+        check = ttk.LabelFrame(tab, text="Check password strength", padding=10)
+        check.grid(row=0, column=0, sticky="ew")
+        check.columnconfigure(0, weight=1)
+        self.check_password = tk.StringVar()
+        self.check_password.trace_add("write", self.on_password_change)
+        self.check_entry = ttk.Entry(check, textvariable=self.check_password, show="*")
+        self.check_entry.grid(row=0, column=0, sticky="ew")
+        self.show_check = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            check, text="Show", variable=self.show_check,
+            command=self._toggle_check_password,
+        ).grid(row=0, column=1, padx=(8, 0))
+        self.strength_bar = ttk.Progressbar(check, maximum=5)
+        self.strength_bar.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        self.strength_label = ttk.Label(check, text="", font=("TkDefaultFont", 11, "bold"))
+        self.strength_label.grid(row=2, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        self.strength_feedback = ttk.Label(check, text="", wraplength=560, justify="left")
+        self.strength_feedback.grid(row=3, column=0, columnspan=2, sticky="w")
+        ttk.Label(check, text="Checked on this computer. Nothing is sent anywhere.").grid(
+            row=4, column=0, columnspan=2, sticky="w", pady=(6, 0)
+        )
+
+        generate = ttk.LabelFrame(tab, text="Generate a password", padding=10)
+        generate.grid(row=1, column=0, sticky="ew", pady=(10, 0))
+        generate.columnconfigure(0, weight=1)
+        options = ttk.Frame(generate)
+        options.grid(row=0, column=0, columnspan=2, sticky="w")
+        ttk.Label(options, text="Length:").pack(side="left")
+        self.generate_length = tk.StringVar(value="16")
+        ttk.Spinbox(
+            options, from_=MIN_LENGTH, to=MAX_LENGTH,
+            textvariable=self.generate_length, width=5,
+        ).pack(side="left", padx=(8, 16))
+        self.use_symbols = tk.BooleanVar(value=True)
+        ttk.Checkbutton(options, text="Include symbols", variable=self.use_symbols).pack(
+            side="left"
+        )
+        ttk.Button(options, text="Generate", command=self.on_generate).pack(
+            side="left", padx=(16, 0)
+        )
+        self.generated_password = tk.StringVar()
+        ttk.Entry(generate, textvariable=self.generated_password, state="readonly").grid(
+            row=1, column=0, sticky="ew", pady=(10, 0)
+        )
+        ttk.Button(generate, text="Copy", command=self.on_copy_generated).grid(
+            row=1, column=1, padx=(8, 0), pady=(10, 0)
+        )
+
+        ttk.Button(tab, text="Clear", command=self.on_clear_passwords).grid(
+            row=2, column=0, sticky="w", pady=(10, 0)
+        )
+        return tab
+
+    def _toggle_check_password(self):
+        self.check_entry.config(show="" if self.show_check.get() else "*")
+
+    def on_password_change(self, *args):
+        password = self.check_password.get()
+        if not password:
+            self.strength_bar["value"] = 0
+            self.strength_label.config(text="")
+            self.strength_feedback.config(text="")
+            return
+        result = check_strength(password)
+        self.strength_bar["value"] = result.score + 1
+        self.strength_label.config(text=f"Strength: {result.label} ({result.score}/4)")
+        tips = [result.warning, *result.suggestions]
+        self.strength_feedback.config(text="\n".join(tip for tip in tips if tip))
+
+    def on_generate(self):
+        try:
+            length = int(self.generate_length.get())
+        except ValueError:
+            messagebox.showerror("Cannot generate", "Length must be a whole number.")
+            return
+        try:
+            self.generated_password.set(generate_password(length, self.use_symbols.get()))
+        except ValueError as error:
+            messagebox.showerror("Cannot generate", str(error))
+
+    def on_copy_generated(self):
+        value = self.generated_password.get()
+        if not value:
+            return
+        self.clipboard_clear()
+        self.clipboard_append(value)
+
+    def on_clear_passwords(self):
+        self.check_password.set("")
+        self.generated_password.set("")
 
 
 if __name__ == "__main__":
