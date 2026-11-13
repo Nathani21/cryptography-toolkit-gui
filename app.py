@@ -7,7 +7,7 @@ from crypto import decrypt_text, encrypt_text
 from hashing import ALGORITHMS, file_matches_hash, files_match, hash_file, hash_text
 from passwords import MAX_LENGTH, MIN_LENGTH, check_strength, generate_password
 
-APP_TITLE = "Cryptography Toolkit v1.0"
+APP_TITLE = "Cryptography Toolkit v1.1"
 
 
 def resource_path(relative_path):
