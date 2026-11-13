@@ -1,3 +1,5 @@
+import os
+import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
@@ -8,12 +10,24 @@ from passwords import MAX_LENGTH, MIN_LENGTH, check_strength, generate_password
 APP_TITLE = "Cryptography Toolkit v1.0"
 
 
+def resource_path(relative_path):
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, relative_path)
+
+
 class ToolkitApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(APP_TITLE)
         self.minsize(640, 480)
+        self._set_icon()
         self._build_tabs()
+
+    def _set_icon(self):
+        try:
+            self.iconbitmap(resource_path(os.path.join("assets", "icon.ico")))
+        except tk.TclError:
+            pass
 
     def _build_tabs(self):
         notebook = ttk.Notebook(self)
