@@ -27,6 +27,10 @@ A small Python desktop app (Tkinter) for hashing text and files, checking file i
 - Live strength meter while you type, with warnings and suggestions
 - Password generator: length 8 to 128, optional symbols
 
+## Download
+
+Get `cryptography_toolkit.exe` from the [latest release](https://github.com/Nathani21/cryptography-toolkit-gui/releases/latest) (Windows). Windows SmartScreen may warn because the file isn't code-signed: click "More info", then "Run anyway".
+
 ## Run from source
 
 Developed and tested on Windows 11 with Python 3.13. Tkinter ships with Python on Windows.
