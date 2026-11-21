@@ -8,20 +8,45 @@ from app import ToolkitApp
 ABC_SHA256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
 
 
-@pytest.fixture
-def window(monkeypatch):
+@pytest.fixture(scope="session")
+def shared_window():
+    # One window for the whole run: opening dozens of Tk windows in a row can
+    # fail on Windows, so the tests reuse this one and reset it each time.
     try:
         win = ToolkitApp()
-    except tk.TclError:
-        pytest.skip("no display available")
+    except tk.TclError as error:
+        if "display" in str(error):
+            pytest.skip("no display available")
+        raise
     win.withdraw()
+    yield win
+    win.destroy()
+
+
+@pytest.fixture
+def window(shared_window, monkeypatch):
+    win = shared_window
+    win.on_clear_hash()
+    win.on_clear_verify()
+    win.on_clear_encrypt()
+    win.on_clear_passwords()
+    for variable, value in (
+        (win.hash_algorithm, "sha256"),
+        (win.verify_algorithm, "sha256"),
+        (win.show_password, False),
+        (win.show_check, False),
+        (win.generate_length, "16"),
+        (win.use_symbols, True),
+    ):
+        variable.set(value)
+    win._toggle_password()
+    win._toggle_check_password()
     errors = []
     monkeypatch.setattr(
         app_module.messagebox, "showerror", lambda title, message: errors.append((title, message))
     )
     win.errors = errors
-    yield win
-    win.destroy()
+    return win
 
 
 def choose_file(monkeypatch, path):
