@@ -1,3 +1,5 @@
+import threading
+import time
 import tkinter as tk
 
 import pytest
@@ -6,6 +8,16 @@ import app as app_module
 from app import ToolkitApp
 
 ABC_SHA256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+
+
+def finish_background(window, timeout=5):
+    """Let the window's event loop run until the background task is done."""
+    deadline = time.monotonic() + timeout
+    while window._busy:
+        window.update()
+        if time.monotonic() > deadline:
+            raise AssertionError("background task did not finish in time")
+        time.sleep(0.01)
 
 
 @pytest.fixture(scope="session")
@@ -26,6 +38,7 @@ def shared_window():
 @pytest.fixture
 def window(shared_window, monkeypatch):
     win = shared_window
+    finish_background(win)
     win.on_clear_hash()
     win.on_clear_verify()
     win.on_clear_encrypt()
@@ -81,6 +94,7 @@ def test_hash_text_empty_shows_popup(window):
 def test_hash_file_shows_result(window, tmp_path, monkeypatch):
     choose_file(monkeypatch, make_file(tmp_path, "a.txt", b"abc"))
     window.on_hash_file()
+    finish_background(window)
     assert window.hash_output.get() == ABC_SHA256
 
 
@@ -94,7 +108,34 @@ def test_hash_file_cancelled_keeps_result(window, monkeypatch):
 def test_hash_file_unreadable_shows_popup(window, tmp_path, monkeypatch):
     choose_file(monkeypatch, tmp_path / "missing.txt")
     window.on_hash_file()
+    finish_background(window)
     assert window.errors[-1][0] == "Cannot read file"
+
+
+def test_hash_file_runs_in_background(window, tmp_path, monkeypatch):
+    gate = threading.Event()
+
+    def slow_hash_file(path, algorithm):
+        gate.wait(timeout=5)
+        return "slow-result"
+
+    monkeypatch.setattr(app_module, "hash_file", slow_hash_file)
+    choose_file(monkeypatch, make_file(tmp_path, "a.txt", b"abc"))
+    window.on_hash_file()
+
+    # the handler returned while the work is still running
+    assert window._busy is True
+    assert window.status_label.cget("text") == "Hashing file..."
+    assert window.hash_output.get() == ""
+    for button in (window.hash_file_button, window.compare_button, window.check_button):
+        assert str(button.cget("state")) == "disabled"
+
+    gate.set()
+    finish_background(window)
+    assert window.hash_output.get() == "slow-result"
+    assert window.status_label.cget("text") == "Ready"
+    for button in (window.hash_file_button, window.compare_button, window.check_button):
+        assert str(button.cget("state")) == "normal"
 
 
 def test_copy_hash_puts_result_on_clipboard(window):
@@ -116,6 +157,7 @@ def test_compare_identical_files(window, tmp_path):
     window.file1.set(str(make_file(tmp_path, "a.bin", b"same")))
     window.file2.set(str(make_file(tmp_path, "b.bin", b"same")))
     window.on_compare()
+    finish_background(window)
     assert "identical" in window.verify_result.cget("text")
 
 
@@ -123,6 +165,7 @@ def test_compare_different_files(window, tmp_path):
     window.file1.set(str(make_file(tmp_path, "a.bin", b"same")))
     window.file2.set(str(make_file(tmp_path, "b.bin", b"diff")))
     window.on_compare()
+    finish_background(window)
     assert "differ" in window.verify_result.cget("text")
 
 
@@ -136,6 +179,7 @@ def test_compare_missing_file_shows_popup(window, tmp_path):
     window.file1.set(str(make_file(tmp_path, "a.bin", b"same")))
     window.file2.set(str(tmp_path / "nope.bin"))
     window.on_compare()
+    finish_background(window)
     assert window.errors[-1][0] == "Cannot read file"
 
 
@@ -143,6 +187,7 @@ def test_check_hash_matches_ignoring_case(window, tmp_path):
     window.check_file.set(str(make_file(tmp_path, "a.txt", b"abc")))
     window.expected_hash.set(ABC_SHA256.upper())
     window.on_check_hash()
+    finish_background(window)
     assert "intact" in window.verify_result.cget("text")
 
 
@@ -150,12 +195,14 @@ def test_check_hash_mismatch(window, tmp_path):
     window.check_file.set(str(make_file(tmp_path, "a.txt", b"abc")))
     window.expected_hash.set("0" * 64)
     window.on_check_hash()
+    finish_background(window)
     assert "NOT" in window.verify_result.cget("text")
 
 
 def test_check_hash_empty_hash_shows_popup(window, tmp_path):
     window.check_file.set(str(make_file(tmp_path, "a.txt", b"abc")))
     window.on_check_hash()
+    finish_background(window)
     assert window.errors[-1][0] == "Cannot check file"
 
 

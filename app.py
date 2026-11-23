@@ -1,5 +1,7 @@
 import os
+import queue
 import sys
+import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
@@ -20,7 +22,9 @@ class ToolkitApp(tk.Tk):
         super().__init__()
         self.title(APP_TITLE)
         self.minsize(640, 480)
+        self._busy = False
         self._set_icon()
+        self._build_status_bar()
         self._build_tabs()
 
     def _set_icon(self):
@@ -28,6 +32,55 @@ class ToolkitApp(tk.Tk):
             self.iconbitmap(resource_path(os.path.join("assets", "icon.ico")))
         except tk.TclError:
             pass
+
+    def _build_status_bar(self):
+        bar = ttk.Frame(self, padding=(10, 0, 10, 8))
+        bar.pack(side="bottom", fill="x")
+        self.status_label = ttk.Label(bar, text="Ready")
+        self.status_label.pack(side="left")
+        self.progress = ttk.Progressbar(bar, mode="indeterminate", length=160)
+        self.progress.pack(side="right")
+
+    def _set_busy(self, busy, label="Ready"):
+        self._busy = busy
+        self.status_label.config(text=label)
+        state = "disabled" if busy else "normal"
+        for button in (self.hash_file_button, self.compare_button, self.check_button):
+            button.config(state=state)
+        if busy:
+            self.progress.start(15)
+        else:
+            self.progress.stop()
+
+    def _run_in_background(self, label, work, on_success, on_error):
+        """Run work() on another thread so the window stays responsive.
+
+        The result is handed back on the window's own thread, because Tk
+        widgets must only be touched from there.
+        """
+        self._set_busy(True, label)
+        results = queue.Queue()
+
+        def runner():
+            try:
+                results.put(("ok", work()))
+            except Exception as error:
+                results.put(("error", error))
+
+        threading.Thread(target=runner, daemon=True).start()
+        self._poll_background(results, on_success, on_error)
+
+    def _poll_background(self, results, on_success, on_error):
+        try:
+            status, value = results.get_nowait()
+        except queue.Empty:
+            self.after(50, self._poll_background, results, on_success, on_error)
+            return
+        self._set_busy(False)
+        if status == "ok":
+            on_success(value)
+        else:
+            on_error(value)
 
     def _build_tabs(self):
         notebook = ttk.Notebook(self)
@@ -57,9 +110,10 @@ class ToolkitApp(tk.Tk):
         buttons = ttk.Frame(tab)
         buttons.grid(row=4, column=0, sticky="w", pady=10)
         ttk.Button(buttons, text="Hash text", command=self.on_hash_text).pack(side="left")
-        ttk.Button(buttons, text="Hash a file...", command=self.on_hash_file).pack(
-            side="left", padx=(8, 0)
+        self.hash_file_button = ttk.Button(
+            buttons, text="Hash a file...", command=self.on_hash_file
         )
+        self.hash_file_button.pack(side="left", padx=(8, 0))
 
         ttk.Label(tab, text="Result:").grid(row=5, column=0, sticky="w")
         self.hash_output = tk.StringVar()
@@ -85,10 +139,13 @@ class ToolkitApp(tk.Tk):
         path = filedialog.askopenfilename(title="Choose a file to hash")
         if not path:
             return
-        try:
-            self.hash_output.set(hash_file(path, self.hash_algorithm.get()))
-        except OSError as error:
-            messagebox.showerror("Cannot read file", str(error))
+        algorithm = self.hash_algorithm.get()
+        self._run_in_background(
+            "Hashing file...",
+            lambda: hash_file(path, algorithm),
+            self.hash_output.set,
+            lambda error: messagebox.showerror("Cannot read file", str(error)),
+        )
 
     def on_copy_hash(self):
         value = self.hash_output.get()
@@ -118,9 +175,8 @@ class ToolkitApp(tk.Tk):
         self.file2 = tk.StringVar()
         self._file_row(compare, 0, "File 1:", self.file1)
         self._file_row(compare, 1, "File 2:", self.file2)
-        ttk.Button(compare, text="Compare", command=self.on_compare).grid(
-            row=2, column=0, sticky="w", pady=(8, 0)
-        )
+        self.compare_button = ttk.Button(compare, text="Compare", command=self.on_compare)
+        self.compare_button.grid(row=2, column=0, sticky="w", pady=(8, 0))
 
         check = ttk.LabelFrame(tab, text="Check a file against a hash", padding=10)
         check.grid(row=2, column=0, sticky="ew", pady=(10, 0))
@@ -132,9 +188,8 @@ class ToolkitApp(tk.Tk):
         ttk.Entry(check, textvariable=self.expected_hash).grid(
             row=1, column=1, columnspan=2, sticky="ew", padx=6
         )
-        ttk.Button(check, text="Check", command=self.on_check_hash).grid(
-            row=2, column=0, sticky="w", pady=(8, 0)
-        )
+        self.check_button = ttk.Button(check, text="Check", command=self.on_check_hash)
+        self.check_button.grid(row=2, column=0, sticky="w", pady=(8, 0))
 
         self.verify_result = ttk.Label(tab, text="", font=("TkDefaultFont", 11, "bold"))
         self.verify_result.grid(row=3, column=0, sticky="w", pady=(12, 0))
@@ -164,11 +219,15 @@ class ToolkitApp(tk.Tk):
         if not path1 or not path2:
             messagebox.showerror("Missing file", "Please choose both files first.")
             return
-        try:
-            same = files_match(path1, path2, self.verify_algorithm.get())
-        except OSError as error:
-            messagebox.showerror("Cannot read file", str(error))
-            return
+        algorithm = self.verify_algorithm.get()
+        self._run_in_background(
+            "Comparing files...",
+            lambda: files_match(path1, path2, algorithm),
+            self._show_compare_result,
+            lambda error: messagebox.showerror("Cannot read file", str(error)),
+        )
+
+    def _show_compare_result(self, same):
         if same:
             self._show_result(True, "Files are identical. No modifications detected.")
         else:
@@ -179,13 +238,16 @@ class ToolkitApp(tk.Tk):
         if not path:
             messagebox.showerror("Missing file", "Please choose a file first.")
             return
-        try:
-            matches = file_matches_hash(
-                path, self.expected_hash.get(), self.verify_algorithm.get()
-            )
-        except (OSError, ValueError) as error:
-            messagebox.showerror("Cannot check file", str(error))
-            return
+        expected = self.expected_hash.get()
+        algorithm = self.verify_algorithm.get()
+        self._run_in_background(
+            "Checking file...",
+            lambda: file_matches_hash(path, expected, algorithm),
+            self._show_check_result,
+            lambda error: messagebox.showerror("Cannot check file", str(error)),
+        )
+
+    def _show_check_result(self, matches):
         if matches:
             self._show_result(True, "Hash matches. The file is intact.")
         else:
