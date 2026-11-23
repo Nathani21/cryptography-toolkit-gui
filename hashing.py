@@ -1,7 +1,8 @@
 import hashlib
 from pathlib import Path
 
-ALGORITHMS = ("sha256", "sha512")
+LEGACY_ALGORITHMS = ("sha1", "md5")
+ALGORITHMS = ("sha256", "sha512") + LEGACY_ALGORITHMS
 CHUNK_SIZE = 64 * 1024
 
 
