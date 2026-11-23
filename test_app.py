@@ -232,6 +232,37 @@ def test_check_hash_needs_file(window):
     assert window.errors[-1][0] == "Missing file"
 
 
+def test_pasting_a_hash_picks_the_algorithm(window):
+    window.expected_hash.set("900150983cd24fb0d6963f7d28e17f72")
+    assert window.verify_algorithm.get() == "md5"
+    assert "md5" in window.detected_label.cget("text")
+    window.expected_hash.set(ABC_SHA256)
+    assert window.verify_algorithm.get() == "sha256"
+    assert "sha256" in window.detected_label.cget("text")
+
+
+def test_unrecognised_hash_keeps_the_chosen_algorithm(window):
+    window.verify_algorithm.set("sha512")
+    window.expected_hash.set("abc123")
+    assert window.verify_algorithm.get() == "sha512"
+    assert window.detected_label.cget("text") == ""
+
+
+def test_detected_label_clears_when_algorithm_is_changed_by_hand(window):
+    window.expected_hash.set(ABC_SHA256)
+    assert "sha256" in window.detected_label.cget("text")
+    window.verify_algorithm.set("md5")
+    assert window.detected_label.cget("text") == ""
+
+
+def test_check_file_against_md5_hash_with_auto_detection(window, tmp_path):
+    window.check_file.set(str(make_file(tmp_path, "a.txt", b"abc")))
+    window.expected_hash.set("900150983CD24FB0D6963F7D28E17F72")
+    window.on_check_hash()
+    finish_background(window)
+    assert "intact" in window.verify_result.cget("text")
+
+
 def test_clear_verify_empties_everything(window, tmp_path):
     window.file1.set("x")
     window.expected_hash.set("h")

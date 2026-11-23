@@ -2,7 +2,7 @@ import hashlib
 
 import pytest
 
-from hashing import file_matches_hash, files_match, hash_file, hash_text
+from hashing import detect_algorithm, file_matches_hash, files_match, hash_file, hash_text
 
 ABC_SHA256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
 
@@ -107,3 +107,25 @@ def test_file_matches_hash_empty_expected_raises(tmp_path):
     f.write_bytes(b"abc")
     with pytest.raises(ValueError):
         file_matches_hash(f, "   ")
+
+
+@pytest.mark.parametrize("algorithm", ["md5", "sha1", "sha256", "sha512"])
+def test_detect_algorithm_from_real_hashes(algorithm):
+    assert detect_algorithm(hash_text("abc", algorithm)) == algorithm
+
+
+def test_detect_algorithm_ignores_case_and_whitespace():
+    assert detect_algorithm("  " + ABC_SHA256.upper() + "\n") == "sha256"
+
+
+def test_detect_algorithm_unknown_length():
+    assert detect_algorithm("abcdef") is None
+
+
+def test_detect_algorithm_not_hex():
+    assert detect_algorithm("z" * 64) is None
+
+
+def test_detect_algorithm_empty():
+    assert detect_algorithm("") is None
+    assert detect_algorithm("   ") is None
