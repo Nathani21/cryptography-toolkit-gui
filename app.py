@@ -6,10 +6,18 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from crypto import decrypt_text, encrypt_text
-from hashing import ALGORITHMS, file_matches_hash, files_match, hash_file, hash_text
+from hashing import (
+    ALGORITHMS,
+    LEGACY_ALGORITHMS,
+    file_matches_hash,
+    files_match,
+    hash_file,
+    hash_text,
+)
 from passwords import MAX_LENGTH, MIN_LENGTH, check_strength, generate_password
 
 APP_TITLE = "Cryptography Toolkit v1.1"
+LEGACY_NOTE = "Not secure: use only to check files that publish this hash."
 
 
 def resource_path(relative_path):
@@ -82,6 +90,15 @@ class ToolkitApp(tk.Tk):
         else:
             on_error(value)
 
+    def _legacy_note(self, parent, variable):
+        label = ttk.Label(parent, text="", foreground="#a15c00")
+
+        def update(*args):
+            label.config(text=LEGACY_NOTE if variable.get() in LEGACY_ALGORITHMS else "")
+
+        variable.trace_add("write", update)
+        return label
+
     def _build_tabs(self):
         notebook = ttk.Notebook(self)
         notebook.pack(fill="both", expand=True, padx=10, pady=10)
@@ -98,10 +115,14 @@ class ToolkitApp(tk.Tk):
 
         ttk.Label(tab, text="Algorithm:").grid(row=0, column=0, sticky="w")
         self.hash_algorithm = tk.StringVar(value=ALGORITHMS[0])
+        algorithm_row = ttk.Frame(tab)
+        algorithm_row.grid(row=1, column=0, sticky="w", pady=(0, 10))
         ttk.Combobox(
-            tab, textvariable=self.hash_algorithm, values=ALGORITHMS,
+            algorithm_row, textvariable=self.hash_algorithm, values=ALGORITHMS,
             state="readonly", width=10,
-        ).grid(row=1, column=0, sticky="w", pady=(0, 10))
+        ).pack(side="left")
+        self.hash_note = self._legacy_note(algorithm_row, self.hash_algorithm)
+        self.hash_note.pack(side="left", padx=(10, 0))
 
         ttk.Label(tab, text="Text to hash:").grid(row=2, column=0, sticky="w")
         self.hash_input = tk.Text(tab, height=6, wrap="word")
@@ -167,6 +188,8 @@ class ToolkitApp(tk.Tk):
             algorithm_row, textvariable=self.verify_algorithm, values=ALGORITHMS,
             state="readonly", width=10,
         ).pack(side="left", padx=(8, 0))
+        self.verify_note = self._legacy_note(algorithm_row, self.verify_algorithm)
+        self.verify_note.pack(side="left", padx=(10, 0))
 
         compare = ttk.LabelFrame(tab, text="Compare two files", padding=10)
         compare.grid(row=1, column=0, sticky="ew", pady=(10, 0))

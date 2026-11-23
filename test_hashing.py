@@ -11,6 +11,36 @@ def test_hash_text_known_value():
     assert hash_text("abc") == ABC_SHA256
 
 
+@pytest.mark.parametrize(
+    "algorithm, expected",
+    [
+        ("md5", "900150983cd24fb0d6963f7d28e17f72"),
+        ("sha1", "a9993e364706816aba3e25717850c26c9cd0d89d"),
+    ],
+)
+def test_hash_text_legacy_algorithms(algorithm, expected):
+    assert hash_text("abc", algorithm) == expected
+
+
+@pytest.mark.parametrize(
+    "algorithm, expected",
+    [
+        ("md5", "900150983cd24fb0d6963f7d28e17f72"),
+        ("sha1", "a9993e364706816aba3e25717850c26c9cd0d89d"),
+    ],
+)
+def test_hash_file_legacy_algorithms(tmp_path, algorithm, expected):
+    f = tmp_path / "a.txt"
+    f.write_bytes(b"abc")
+    assert hash_file(f, algorithm) == expected
+
+
+def test_file_matches_hash_with_md5(tmp_path):
+    f = tmp_path / "a.txt"
+    f.write_bytes(b"abc")
+    assert file_matches_hash(f, "900150983CD24FB0D6963F7D28E17F72", "md5") is True
+
+
 def test_hash_text_sha512_length():
     assert len(hash_text("abc", "sha512")) == 128
 

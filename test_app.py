@@ -86,6 +86,27 @@ def test_hash_text_uses_chosen_algorithm(window):
     assert len(window.hash_output.get()) == 128
 
 
+def test_hash_text_with_md5(window):
+    window.hash_input.insert("1.0", "abc")
+    window.hash_algorithm.set("md5")
+    window.on_hash_text()
+    assert window.hash_output.get() == "900150983cd24fb0d6963f7d28e17f72"
+
+
+def test_legacy_note_shows_only_for_md5_and_sha1(window):
+    for tab_variable, note in (
+        (window.hash_algorithm, window.hash_note),
+        (window.verify_algorithm, window.verify_note),
+    ):
+        assert note.cget("text") == ""
+        for legacy in ("md5", "sha1"):
+            tab_variable.set(legacy)
+            assert "Not secure" in note.cget("text")
+        for modern in ("sha512", "sha256"):
+            tab_variable.set(modern)
+            assert note.cget("text") == ""
+
+
 def test_hash_text_empty_shows_popup(window):
     window.on_hash_text()
     assert window.errors[-1][0] == "Cannot hash"

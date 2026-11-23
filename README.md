@@ -11,7 +11,7 @@ A small Python desktop app (Tkinter) for hashing text and files, checking file i
 ## Features
 
 **Hash**
-- SHA-256 or SHA-512 of typed text or any file
+- SHA-256 or SHA-512 of typed text or any file, plus MD5 and SHA-1 for checking older downloads
 - Copy the result, or clear the tab
 
 **Verify**
