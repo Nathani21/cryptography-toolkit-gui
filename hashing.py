@@ -1,9 +1,11 @@
 import hashlib
+import string
 from pathlib import Path
 
 LEGACY_ALGORITHMS = ("sha1", "md5")
 ALGORITHMS = ("sha256", "sha512") + LEGACY_ALGORITHMS
 CHUNK_SIZE = 64 * 1024
+HASH_LENGTHS = {32: "md5", 40: "sha1", 64: "sha256", 128: "sha512"}
 
 
 def _check_algorithm(algorithm: str) -> None:
@@ -36,3 +38,11 @@ def file_matches_hash(file_path, expected_hash: str, algorithm: str = "sha256") 
     if not expected:
         raise ValueError("Please paste the expected hash first.")
     return hash_file(file_path, algorithm) == expected
+
+
+def detect_algorithm(hash_value: str):
+    """Guess the algorithm from a hex hash's length, or return None if unsure."""
+    cleaned = "".join(hash_value.split())
+    if not cleaned or any(char not in string.hexdigits for char in cleaned):
+        return None
+    return HASH_LENGTHS.get(len(cleaned))

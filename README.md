@@ -17,6 +17,7 @@ A small Python desktop app (Tkinter) for hashing text and files, checking file i
 **Verify**
 - Compare two files to see whether they are identical
 - Check a file against a hash you paste in, such as one published next to a download (case and spaces are ignored)
+- The algorithm is picked for you from the length of the pasted hash
 
 **Encrypt**
 - Encrypt text with a password, then paste the result back in to decrypt it

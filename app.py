@@ -9,6 +9,7 @@ from crypto import decrypt_text, encrypt_text
 from hashing import (
     ALGORITHMS,
     LEGACY_ALGORITHMS,
+    detect_algorithm,
     file_matches_hash,
     files_match,
     hash_file,
@@ -213,6 +214,10 @@ class ToolkitApp(tk.Tk):
         )
         self.check_button = ttk.Button(check, text="Check", command=self.on_check_hash)
         self.check_button.grid(row=2, column=0, sticky="w", pady=(8, 0))
+        self.detected_label = ttk.Label(check, text="")
+        self.detected_label.grid(row=2, column=1, sticky="w", padx=6, pady=(8, 0))
+        self.expected_hash.trace_add("write", self._on_expected_hash_change)
+        self.verify_algorithm.trace_add("write", self._refresh_detected_label)
 
         self.verify_result = ttk.Label(tab, text="", font=("TkDefaultFont", 11, "bold"))
         self.verify_result.grid(row=3, column=0, sticky="w", pady=(12, 0))
@@ -232,6 +237,19 @@ class ToolkitApp(tk.Tk):
         path = filedialog.askopenfilename()
         if path:
             variable.set(path)
+
+    def _on_expected_hash_change(self, *args):
+        detected = detect_algorithm(self.expected_hash.get())
+        if detected:
+            self.verify_algorithm.set(detected)
+        self._refresh_detected_label()
+
+    def _refresh_detected_label(self, *args):
+        detected = detect_algorithm(self.expected_hash.get())
+        if detected and detected == self.verify_algorithm.get():
+            self.detected_label.config(text=f"Detected {detected} from the hash length")
+        else:
+            self.detected_label.config(text="")
 
     def _show_result(self, ok, message):
         self.verify_result.config(text=message, foreground="green" if ok else "red")
