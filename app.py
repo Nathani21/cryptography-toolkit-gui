@@ -19,6 +19,7 @@ from passwords import MAX_LENGTH, MIN_LENGTH, check_strength, generate_password
 
 APP_TITLE = "Cryptography Toolkit v1.1"
 LEGACY_NOTE = "Not secure: use only to check files that publish this hash."
+GOOD_SCORE = 3
 
 
 def resource_path(relative_path):
@@ -321,6 +322,9 @@ class ToolkitApp(tk.Tk):
             password_row, text="Show", variable=self.show_password,
             command=self._toggle_password,
         ).grid(row=0, column=1, padx=(8, 0))
+        self.password_strength = ttk.Label(password_row, text="")
+        self.password_strength.grid(row=1, column=0, columnspan=2, sticky="w", pady=(4, 0))
+        self.encrypt_password.trace_add("write", self._on_encrypt_password_change)
 
         buttons = ttk.Frame(tab)
         buttons.grid(row=4, column=0, sticky="w", pady=10)
@@ -345,6 +349,20 @@ class ToolkitApp(tk.Tk):
                  "There is no way to recover a lost password.",
         ).grid(row=8, column=0, sticky="w", pady=(8, 0))
         return tab
+
+    def _on_encrypt_password_change(self, *args):
+        password = self.encrypt_password.get()
+        if not password:
+            self.password_strength.config(text="")
+            return
+        result = check_strength(password)
+        if result.score >= GOOD_SCORE:
+            self.password_strength.config(text=f"{result.label} password.", foreground="#1a7f37")
+            return
+        tip = result.warning or (result.suggestions[0] if result.suggestions else "")
+        self.password_strength.config(
+            text=f"{result.label} password. {tip}".strip(), foreground="#a15c00"
+        )
 
     def _toggle_password(self):
         self.password_entry.config(show="" if self.show_password.get() else "*")
