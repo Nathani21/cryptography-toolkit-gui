@@ -22,6 +22,7 @@ A small Python desktop app (Tkinter) for hashing text and files, checking file i
 **Encrypt**
 - Encrypt text with a password, then paste the result back in to decrypt it
 - A wrong password, or text that was changed, is detected and reported
+- A live note warns you when the password is weak, but doesn't stop you
 - A lost password cannot be recovered
 
 **Passwords**

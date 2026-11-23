@@ -291,6 +291,40 @@ def test_encrypt_then_decrypt_round_trip(window):
     assert encrypted_output(window) == "héllo ₦aira"
 
 
+def test_weak_encrypt_password_shows_a_warning(window):
+    window.encrypt_password.set("password")
+    text = window.password_strength.cget("text")
+    assert text.startswith("Very weak password.")
+    assert "top-10" in text
+
+
+def test_strong_encrypt_password_shows_no_warning(window):
+    window.encrypt_password.set("xk9#Lm2$Qp7!vR4z")
+    text = window.password_strength.cget("text")
+    assert text == "Very strong password."
+
+
+def test_encrypt_password_note_clears_when_empty(window):
+    window.encrypt_password.set("password")
+    window.encrypt_password.set("")
+    assert window.password_strength.cget("text") == ""
+
+
+def test_weak_password_warns_but_does_not_block_encryption(window):
+    window.encrypt_input.insert("1.0", "secret")
+    window.encrypt_password.set("pw")
+    window.on_encrypt()
+    assert "weak" in window.password_strength.cget("text").lower()
+    assert encrypted_output(window) != ""
+    assert window.errors == []
+
+
+def test_clear_encrypt_also_clears_the_password_note(window):
+    window.encrypt_password.set("password")
+    window.on_clear_encrypt()
+    assert window.password_strength.cget("text") == ""
+
+
 def test_encrypt_without_password_shows_popup(window):
     window.encrypt_input.insert("1.0", "secret")
     window.on_encrypt()
