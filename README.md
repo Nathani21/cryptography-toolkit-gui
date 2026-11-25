@@ -29,6 +29,16 @@ A small Python desktop app (Tkinter) for hashing text and files, checking file i
 - Live strength meter while you type, with warnings and suggestions
 - Password generator: length 8 to 128, optional symbols
 
+## Keyboard shortcuts
+
+| Shortcut | What it does |
+|---|---|
+| Ctrl+Enter | Run the tab's main action: hash the text, check the file against the hash, encrypt, or generate a password |
+| Ctrl+Shift+Enter | Decrypt (Encrypt tab) |
+| Ctrl+Shift+C | Copy the result |
+| Ctrl+L | Clear the tab |
+| Ctrl+1 to Ctrl+4 | Switch to the Hash, Verify, Encrypt or Passwords tab |
+
 ## Download
 
 Get `cryptography_toolkit.exe` from the [latest release](https://github.com/Nathani21/cryptography-toolkit-gui/releases/latest) (Windows). Windows SmartScreen may warn because the file isn't code-signed: click "More info", then "Run anyway".

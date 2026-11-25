@@ -10,6 +10,18 @@ from app import MONO_FONT, ToolkitApp
 ABC_SHA256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
 
 
+def select_tab(window, name):
+    for index in range(window.notebook.index("end")):
+        if window.notebook.tab(index, "text") == name:
+            window.notebook.select(index)
+            return
+    raise AssertionError(f"no tab called {name}")
+
+
+def press(window, sequence):
+    window._shortcuts[sequence](None)
+
+
 def finish_background(window, timeout=5):
     """Let the window's event loop run until the background task is done."""
     deadline = time.monotonic() + timeout
@@ -43,6 +55,7 @@ def window(shared_window, monkeypatch):
     win.on_clear_verify()
     win.on_clear_encrypt()
     win.on_clear_passwords()
+    win.notebook.select(0)
     for variable, value in (
         (win.hash_algorithm, "sha256"),
         (win.verify_algorithm, "sha256"),
@@ -439,3 +452,77 @@ def test_clear_passwords_empties_everything(window):
     assert window.check_password.get() == ""
     assert window.generated_password.get() == ""
     assert window.strength_label.cget("text") == ""
+
+
+
+
+# ---------- Keyboard shortcuts ----------
+def test_ctrl_enter_hashes_text_on_the_hash_tab(window):
+    window.hash_input.insert("1.0", "abc")
+    press(window, "<Control-Return>")
+    assert window.hash_output.get() == ABC_SHA256
+
+
+def test_ctrl_enter_checks_the_file_on_the_verify_tab(window, tmp_path):
+    select_tab(window, "Verify")
+    window.check_file.set(str(make_file(tmp_path, "a.txt", b"abc")))
+    window.expected_hash.set(ABC_SHA256)
+    press(window, "<Control-Return>")
+    finish_background(window)
+    assert "intact" in window.verify_result.cget("text")
+
+
+def test_ctrl_enter_encrypts_and_ctrl_shift_enter_decrypts(window):
+    select_tab(window, "Encrypt")
+    window.encrypt_input.insert("1.0", "secret")
+    window.encrypt_password.set("xk9#Lm2$Qp7!vR4z")
+    press(window, "<Control-Return>")
+    package = encrypted_output(window)
+    assert package != ""
+
+    window.encrypt_input.delete("1.0", "end")
+    window.encrypt_input.insert("1.0", package)
+    press(window, "<Control-Shift-Return>")
+    assert encrypted_output(window) == "secret"
+
+
+def test_ctrl_enter_generates_a_password_on_the_passwords_tab(window):
+    select_tab(window, "Passwords")
+    press(window, "<Control-Return>")
+    assert len(window.generated_password.get()) == 16
+
+
+def test_decrypt_shortcut_does_nothing_outside_the_encrypt_tab(window):
+    window.hash_input.insert("1.0", "abc")
+    press(window, "<Control-Shift-Return>")
+    assert window.hash_output.get() == ""
+    assert window.errors == []
+
+
+def test_ctrl_l_clears_only_the_current_tab(window):
+    window.hash_input.insert("1.0", "abc")
+    window.encrypt_input.insert("1.0", "keep me")
+    press(window, "<Control-l>")
+    assert window.hash_input.get("1.0", "end-1c") == ""
+    assert window.encrypt_input.get("1.0", "end-1c") == "keep me"
+
+
+def test_ctrl_shift_c_copies_the_result(window):
+    window.hash_output.set("deadbeef")
+    press(window, "<Control-Shift-C>")
+    assert window.clipboard_get() == "deadbeef"
+
+
+def test_ctrl_number_switches_tabs(window):
+    for number, name in enumerate(("Hash", "Verify", "Encrypt", "Passwords")):
+        window._select_tab(number)
+        assert window.notebook.tab(window.notebook.select(), "text") == name
+
+
+def test_shortcuts_are_bound_on_the_window_and_text_boxes(window):
+    for sequence in window._shortcuts:
+        assert window.bind(sequence)
+    for number in range(1, 5):
+        assert window.bind(f"<Control-Key-{number}>")
+    for sequence in ("<Control-Return>", "<Control-Shift-Return>"):
+        assert window.bind_class("Text", sequence)
