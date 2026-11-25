@@ -20,6 +20,7 @@ from passwords import MAX_LENGTH, MIN_LENGTH, check_strength, generate_password
 APP_TITLE = "Cryptography Toolkit v1.1"
 LEGACY_NOTE = "Not secure: use only to check files that publish this hash."
 GOOD_SCORE = 3
+MONO_FONT = "Consolas 10"
 
 
 def resource_path(relative_path):
@@ -33,6 +34,7 @@ class ToolkitApp(tk.Tk):
         self.title(APP_TITLE)
         self.minsize(640, 480)
         self._busy = False
+        self.option_add("*Text.font", "TkDefaultFont")
         self._set_icon()
         self._build_status_bar()
         self._build_tabs()
@@ -44,12 +46,12 @@ class ToolkitApp(tk.Tk):
             pass
 
     def _build_status_bar(self):
-        bar = ttk.Frame(self, padding=(10, 0, 10, 8))
+        bar = ttk.Frame(self, padding=(10, 0, 10, 8), height=30)
         bar.pack(side="bottom", fill="x")
+        bar.pack_propagate(False)
         self.status_label = ttk.Label(bar, text="Ready")
         self.status_label.pack(side="left")
         self.progress = ttk.Progressbar(bar, mode="indeterminate", length=160)
-        self.progress.pack(side="right")
 
     def _set_busy(self, busy, label="Ready"):
         self._busy = busy
@@ -58,9 +60,11 @@ class ToolkitApp(tk.Tk):
         for button in (self.hash_file_button, self.compare_button, self.check_button):
             button.config(state=state)
         if busy:
+            self.progress.pack(side="right")
             self.progress.start(15)
         else:
             self.progress.stop()
+            self.progress.pack_forget()
 
     def _run_in_background(self, label, work, on_success, on_error):
         """Run work() on another thread so the window stays responsive.
@@ -140,9 +144,9 @@ class ToolkitApp(tk.Tk):
 
         ttk.Label(tab, text="Result:").grid(row=5, column=0, sticky="w")
         self.hash_output = tk.StringVar()
-        ttk.Entry(tab, textvariable=self.hash_output, state="readonly").grid(
-            row=6, column=0, sticky="ew"
-        )
+        ttk.Entry(
+            tab, textvariable=self.hash_output, state="readonly", font=MONO_FONT
+        ).grid(row=6, column=0, sticky="ew")
         actions = ttk.Frame(tab)
         actions.grid(row=7, column=0, sticky="w", pady=(8, 0))
         ttk.Button(actions, text="Copy", command=self.on_copy_hash).pack(side="left")
@@ -210,7 +214,7 @@ class ToolkitApp(tk.Tk):
         self.expected_hash = tk.StringVar()
         self._file_row(check, 0, "File:", self.check_file)
         ttk.Label(check, text="Expected hash:").grid(row=1, column=0, sticky="w", pady=2)
-        ttk.Entry(check, textvariable=self.expected_hash).grid(
+        ttk.Entry(check, textvariable=self.expected_hash, font=MONO_FONT).grid(
             row=1, column=1, columnspan=2, sticky="ew", padx=6
         )
         self.check_button = ttk.Button(check, text="Check", command=self.on_check_hash)
@@ -334,7 +338,9 @@ class ToolkitApp(tk.Tk):
         )
 
         ttk.Label(tab, text="Result:").grid(row=5, column=0, sticky="w")
-        self.encrypt_output = tk.Text(tab, height=6, wrap="char", state="disabled")
+        self.encrypt_output = tk.Text(
+            tab, height=6, wrap="char", state="disabled", font=MONO_FONT
+        )
         self.encrypt_output.grid(row=6, column=0, sticky="nsew")
 
         actions = ttk.Frame(tab)
@@ -461,9 +467,9 @@ class ToolkitApp(tk.Tk):
             side="left", padx=(16, 0)
         )
         self.generated_password = tk.StringVar()
-        ttk.Entry(generate, textvariable=self.generated_password, state="readonly").grid(
-            row=1, column=0, sticky="ew", pady=(10, 0)
-        )
+        ttk.Entry(
+            generate, textvariable=self.generated_password, state="readonly", font=MONO_FONT
+        ).grid(row=1, column=0, sticky="ew", pady=(10, 0))
         ttk.Button(generate, text="Copy", command=self.on_copy_generated).grid(
             row=1, column=1, padx=(8, 0), pady=(10, 0)
         )

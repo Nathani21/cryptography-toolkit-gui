@@ -5,7 +5,7 @@ import tkinter as tk
 import pytest
 
 import app as app_module
-from app import ToolkitApp
+from app import MONO_FONT, ToolkitApp
 
 ABC_SHA256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
 
@@ -147,6 +147,7 @@ def test_hash_file_runs_in_background(window, tmp_path, monkeypatch):
     # the handler returned while the work is still running
     assert window._busy is True
     assert window.status_label.cget("text") == "Hashing file..."
+    assert window.progress.winfo_manager() == "pack"
     assert window.hash_output.get() == ""
     for button in (window.hash_file_button, window.compare_button, window.check_button):
         assert str(button.cget("state")) == "disabled"
@@ -155,8 +156,15 @@ def test_hash_file_runs_in_background(window, tmp_path, monkeypatch):
     finish_background(window)
     assert window.hash_output.get() == "slow-result"
     assert window.status_label.cget("text") == "Ready"
+    assert window.progress.winfo_manager() == ""
     for button in (window.hash_file_button, window.compare_button, window.check_button):
         assert str(button.cget("state")) == "normal"
+
+
+def test_inputs_use_the_normal_font_and_encrypted_output_is_monospaced(window):
+    assert str(window.hash_input.cget("font")) == "TkDefaultFont"
+    assert str(window.encrypt_input.cget("font")) == "TkDefaultFont"
+    assert str(window.encrypt_output.cget("font")) == MONO_FONT
 
 
 def test_copy_hash_puts_result_on_clipboard(window):
