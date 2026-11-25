@@ -105,13 +105,66 @@ class ToolkitApp(tk.Tk):
         variable.trace_add("write", update)
         return label
 
+    def _bind_shortcuts(self):
+        self._shortcuts = {
+            "<Control-Return>": self._shortcut_handler(
+                {
+                    "Hash": self.on_hash_text,
+                    "Verify": self.on_check_hash,
+                    "Encrypt": self.on_encrypt,
+                    "Passwords": self.on_generate,
+                }
+            ),
+            "<Control-Shift-Return>": self._shortcut_handler({"Encrypt": self.on_decrypt}),
+            "<Control-Shift-C>": self._shortcut_handler(
+                {
+                    "Hash": self.on_copy_hash,
+                    "Encrypt": self.on_copy_encrypt,
+                    "Passwords": self.on_copy_generated,
+                }
+            ),
+            "<Control-l>": self._shortcut_handler(
+                {
+                    "Hash": self.on_clear_hash,
+                    "Verify": self.on_clear_verify,
+                    "Encrypt": self.on_clear_encrypt,
+                    "Passwords": self.on_clear_passwords,
+                }
+            ),
+        }
+        for sequence, handler in self._shortcuts.items():
+            self.bind(sequence, handler)
+        # A Text box inserts a newline on Ctrl+Enter before the window sees it,
+        # so the Text boxes get the Enter shortcuts as well
+        for sequence in ("<Control-Return>", "<Control-Shift-Return>"):
+            self.bind_class("Text", sequence, self._shortcuts[sequence])
+        for number in range(1, 5):
+            self.bind(
+                f"<Control-Key-{number}>",
+                lambda event, index=number - 1: self._select_tab(index),
+            )
+
+    def _shortcut_handler(self, actions):
+        def handler(event):
+            action = actions.get(self.notebook.tab(self.notebook.select(), "text"))
+            if action:
+                action()
+            return "break"
+
+        return handler
+
+    def _select_tab(self, index):
+        self.notebook.select(index)
+        return "break"
+
     def _build_tabs(self):
-        notebook = ttk.Notebook(self)
-        notebook.pack(fill="both", expand=True, padx=10, pady=10)
-        notebook.add(self._build_hash_tab(notebook), text="Hash")
-        notebook.add(self._build_verify_tab(notebook), text="Verify")
-        notebook.add(self._build_encrypt_tab(notebook), text="Encrypt")
-        notebook.add(self._build_passwords_tab(notebook), text="Passwords")
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill="both", expand=True, padx=10, pady=10)
+        self.notebook.add(self._build_hash_tab(self.notebook), text="Hash")
+        self.notebook.add(self._build_verify_tab(self.notebook), text="Verify")
+        self.notebook.add(self._build_encrypt_tab(self.notebook), text="Encrypt")
+        self.notebook.add(self._build_passwords_tab(self.notebook), text="Passwords")
+        self._bind_shortcuts()
 
     # ---------- Hash tab ----------
     def _build_hash_tab(self, parent):
@@ -280,6 +333,8 @@ class ToolkitApp(tk.Tk):
             self._show_result(False, "Files differ! Modifications detected.")
 
     def on_check_hash(self):
+        if self._busy:
+            return
         path = self.check_file.get().strip()
         if not path:
             messagebox.showerror("Missing file", "Please choose a file first.")
